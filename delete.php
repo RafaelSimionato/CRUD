@@ -11,14 +11,14 @@ function redirect_with(string $url, array $params = []): void {
   exit();
 }
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
   http_response_code(405);
   exit('Method Not Allowed');
 }
 
 // CSRF protection
-$token = $_POST['csrf'] ?? '';
-if (!hash_equals($_SESSION['csrf'] ?? '', $token)) {
+$token = (string)($_POST['csrf'] ?? '');
+if (!hash_equals((string)($_SESSION['csrf'] ?? ''), $token)) {
   redirect_with('index.php', [
     'status' => 'error',
     'msg' => 'Invalid CSRF token.',
@@ -34,17 +34,28 @@ if (!$id || $id <= 0) {
   ]);
 }
 
-// Delete safely
 try {
   $stmt = $conn->prepare('DELETE FROM users WHERE id = ?');
   $stmt->bind_param('i', $id);
   $stmt->execute();
+
+  if ($stmt->affected_rows < 1) {
+    redirect_with('index.php', [
+      'status' => 'error',
+      'msg' => 'User not found (already deleted).',
+    ]);
+  }
+
+  $stmt->close();
 
   redirect_with('index.php', [
     'status' => 'success',
     'msg' => 'User deleted successfully.',
   ]);
 } catch (mysqli_sql_exception $e) {
+  // Optional internal logging
+  // error_log($e->getMessage());
+
   redirect_with('index.php', [
     'status' => 'error',
     'msg' => 'Could not delete user.',
