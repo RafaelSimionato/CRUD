@@ -18,7 +18,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 
 // CSRF protection
 $token = (string)($_POST['csrf'] ?? '');
-if (!hash_equals((string)($_SESSION['csrf'] ?? ''), $token)) {
+$sessionToken = (string)($_SESSION['csrf'] ?? '');
+if ($sessionToken === '' || !hash_equals($sessionToken, $token)) {
   redirect_with('index.php', [
     'status' => 'error',
     'msg' => 'Invalid CSRF token.',
@@ -53,9 +54,7 @@ try {
     'msg' => 'User deleted successfully.',
   ]);
 } catch (mysqli_sql_exception $e) {
-  // Optional internal logging
-  // error_log($e->getMessage());
-
+  // error_log($e->getMessage()); // optional
   redirect_with('index.php', [
     'status' => 'error',
     'msg' => 'Could not delete user.',
