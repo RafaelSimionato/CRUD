@@ -17,7 +17,7 @@ function redirect_with(string $url, array $params = []): void {
   exit();
 }
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
   http_response_code(405);
   exit('Method Not Allowed');
 }
@@ -31,7 +31,6 @@ if ($name === '' || mb_strlen($name) < 2) $errors[] = 'Name must be at least 2 c
 if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'Please provide a valid email.';
 
 if ($errors) {
-  // If you have a form page, redirect back with an error message
   redirect_with('index.php', [
     'status' => 'error',
     'msg' => implode(' ', $errors),
@@ -40,6 +39,8 @@ if ($errors) {
 
 // Insert user safely (prepared statement)
 try {
+  mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
   $stmt = $conn->prepare('INSERT INTO users (name, email) VALUES (?, ?)');
   $stmt->bind_param('ss', $name, $email);
   $stmt->execute();
@@ -49,7 +50,9 @@ try {
     'msg' => 'User created successfully.',
   ]);
 } catch (mysqli_sql_exception $e) {
-  // If email should be unique, you can detect duplicates here
+  // Optional: log internal error for debugging (do NOT show to user in production)
+  // error_log($e->getMessage());
+
   redirect_with('index.php', [
     'status' => 'error',
     'msg' => 'Could not create user. Email may already exist.',
